@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>算法可视化：最小覆盖子串 (LeetCode 76) - 滑动窗口详解</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            background: linear-gradient(145deg, #f5f7fc 0%, #e9eef5 100%);
+            font-family: 'Segoe UI', 'Fira Code', 'Cascadia Code', 'Roboto Mono', monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            margin: 0;
+            min-height: 100vh;
+        }
+        .card {
+            max-width: 1300px;
+            width: 100%;
+            background: rgba(255,255,255,0.92);
+            backdrop-filter: blur(2px);
+            border-radius: 2.5rem;
+            box-shadow: 0 25px 45px -12px rgba(0,0,0,0.35), 0 2px 8px rgba(0,0,0,0.05);
+            overflow: hidden;
+            transition: all 0.2s;
+        }
+        .header {
+            background: #1e293b;
+            color: #f1f5f9;
+            padding: 1.5rem 2rem;
+            border-bottom: 4px solid #3b82f6;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 1.8rem;
+            font-weight: 600;
+            letter-spacing: -0.3px;
+        }
+        .header p {
+            margin: 0.5rem 0 0;
+            opacity: 0.8;
+            font-family: system-ui, sans-serif;
+        }
+        .code-container {
+            background: #0f172a;
+            color: #e2e8f0;
+            padding: 1.2rem 1.8rem;
+            font-size: 0.9rem;
+            overflow-x: auto;
+            border-bottom: 1px solid #334155;
+        }
+        pre {
+            margin: 0;
+            font-family: 'Fira Code', 'Cascadia Code', monospace;
+            tab-size: 4;
+        }
+        .explanation-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.8rem;
+            padding: 2rem 2rem 1.5rem;
+        }
+        .visual-panel {
+            flex: 2;
+            min-width: 280px;
+            background: white;
+            border-radius: 1.5rem;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+            padding: 1.2rem;
+        }
+        .state-panel {
+            flex: 1.2;
+            min-width: 260px;
+            background: #f8fafc;
+            border-radius: 1.5rem;
+            padding: 1.2rem;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+            border: 1px solid #e2e8f0;
+        }
+        .window-visual {
+            background: #f1f5f9;
+            border-radius: 1rem;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .string-row {
+            display: flex;
+            flex-wrap: nowrap;
+            overflow-x: auto;
+            padding: 0.5rem 0;
+            gap: 4px;
+            font-family: monospace;
+        }
+        .char-box {
+            min-width: 48px;
+            height: 56px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: white;
+            border-radius: 12px;
+            font-weight: bold;
+            font-size: 1.3rem;
+            border: 1px solid #cbd5e1;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            transition: all 0.1s ease;
+        }
+        .char-box span.char {
+            font-size: 1.5rem;
+        }
+        .char-box span.idx {
+            font-size: 0.7rem;
+            color: #64748b;
+            margin-top: 4px;
+        }
+        .highlight-left {
+            background: #fbbf24;
+            border-color: #d97706;
+            box-shadow: 0 0 0 2px #fbbf24;
+        }
+        .highlight-right {
+            background: #34d399;
+            border-color: #059669;
+            box-shadow: 0 0 0 2px #34d399;
+        }
+        .window-range {
+            background: #bfdbfe;
+            border-color: #3b82f6;
+            box-shadow: inset 0 0 0 1px #3b82f6, 0 0 0 2px #93c5fd;
+        }
+        .match-glow {
+            background: #fde047;
+            transform: scale(1.02);
+        }
+        .dict-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+            background: white;
+            border-radius: 1rem;
+            overflow: hidden;
+        }
+        .dict-table th, .dict-table td {
+            text-align: center;
+            padding: 8px 6px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .badge {
+            background: #3b82f6;
+            color: white;
+            border-radius: 40px;
+            padding: 2px 8px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .formed-badge {
+            background: #10b981;
+            margin-left: 8px;
+        }
+        .step-control {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        button {
+            background: #1e293b;
+            border: none;
+            color: white;
+            padding: 8px 18px;
+            border-radius: 40px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.1s;
+            font-family: inherit;
+        }
+        button:hover {
+            background: #0f172a;
+            transform: scale(0.97);
+        }
+        .reset-btn {
+            background: #475569;
+        }
+        .info-text {
+            background: #eef2ff;
+            padding: 0.8rem;
+            border-radius: 1rem;
+            margin-top: 1rem;
+            font-size: 0.85rem;
+            border-left: 4px solid #3b82f6;
+        }
+        .answer-area {
+            background: #e6f7e6;
+            padding: 0.6rem 1rem;
+            border-radius: 1rem;
+            font-weight: bold;
+            font-family: monospace;
+            font-size: 1rem;
+            margin-top: 1rem;
+        }
+        hr {
+            margin: 1rem 0;
+        }
+        @media (max-width: 800px) {
+            .char-box { min-width: 36px; height: 48px; }
+            .char-box span.char { font-size: 1.2rem; }
+        }
+    </style>
+</head>
+<body>
+<div class="card">
+    <div class="header">
+        <h1>🔍 最小覆盖子串 · 滑动窗口算法</h1>
+        <p>来自 LeetCode 76 题 | Python 实现 (collections.defaultdict + 双指针) | 交互可视化逐步执行</p>
+    </div>
+    <div class="code-container">
+        <pre><span style="color:#94a3b8;">from collections import defaultdict</span>
+<span style="color:#facc15;">class Solution</span>:
+    <span style="color:#7dd3fc;">def minWindow</span>(self, s: str, t: str) -> str:
+        d = defaultdict(int)
+        <span style="color:#94a3b8;">for char in t: d[char] += 1</span>
+        formed, total = 0, len(d)
+        l = r = 0
+        len_ans = float('inf')
+        subl, subr = 0, 0
+        <span style="color:#94a3b8;">while r &lt; len(s):</span>
+            char = s[r]
+            <span style="color:#94a3b8;">if char in d:</span>
+                d[char] -= 1
+                <span style="color:#94a3b8;">if d[char] == 0: formed += 1</span>
+            <span style="color:#94a3b8;">while l &lt;= r and formed == total:</span>
+                curr_len = r - l + 1
+                <span style="color:#94a3b8;">if curr_len &lt; len_ans:</span>
+                    len_ans, subl, subr = curr_len, l, r+1
+                char_l = s[l]
+                <span style="color:#94a3b8;">if char_l in d:</span>
+                    <span style="color:#94a3b8;">if d[char_l] == 0: formed -= 1</span>
+                    d[char_l] += 1
+                l += 1
+            r += 1
+        <span style="color:#94a3b8;">return "" if len_ans == float('inf') else s[subl:subr]</span></pre>
+    </div>
+
+    <div class="explanation-grid">
+        <!-- 左侧可视化区域 -->
+        <div class="visual-panel">
+            <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                <h3 style="margin:0 0 10px 0;">📌 滑动窗口动态模拟</h3>
+                <div><span class="badge">S 串</span> <span id="sDisplay" style="font-weight:bold;"></span> &nbsp; | &nbsp; 
+                <span class="badge" style="background:#8b5cf6;">T 串</span> <span id="tDisplay" style="font-weight:bold;"></span></div>
+            </div>
+            <div class="window-visual">
+                <div class="string-row" id="stringContainer"></div>
+                <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size:0.8rem;">
+                    <span>🔵 左指针 L</span>
+                    <span>🟢 右指针 R</span>
+                    <span>🟨 窗口区间 (覆盖)</span>
+                </div>
+            </div>
+
+            <div style="background:#f9f9ff; border-radius: 1rem; padding: 12px;">
+                <div><strong>⚙️ 当前算法状态</strong></div>
+                <div style="display: flex; gap: 20px; flex-wrap: wrap; margin-top: 8px;">
+                    <div><span class="badge">formed</span> <strong id="formedValue">0</strong> / <span id="totalNeed">0</span></div>
+                    <div><span class="badge">窗口长度</span> <strong id="currWinLen">0</strong></div>
+                    <div><span class="badge">最佳长度</span> <strong id="bestLen">∞</strong></div>
+                </div>
+            </div>
+
+            <div class="step-control">
+                <button id="prevBtn" style="background:#334155;">◀ 上一步</button>
+                <button id="nextBtn" style="background:#2563eb;">下一步 ▶</button>
+                <button id="resetBtn" class="reset-btn">🔄 重置</button>
+                <button id="autoBtn" style="background:#059669;">⚡ 自动演示</button>
+            </div>
+            <div class="info-text">
+                💡 <strong>算法核心</strong>：<br>
+                1️⃣ 右指针 <code>r</code> 扩张，加入字符并更新需求字典。<br>
+                2️⃣ 当所有字符都满足 (<code>formed == total</code>) 时，尝试缩小左指针 <code>l</code> 以寻找更短的可行窗口。<br>
+                3️⃣ 每次收缩前记录最小窗口，同时恢复字典计数，直到窗口不再覆盖。<br>
+                4️⃣ 最终返回最小覆盖子串。
+            </div>
+        </div>
+
+        <!-- 右侧状态展示: 字典计数 + 当前答案 -->
+        <div class="state-panel">
+            <h3>📖 需求字典 <span style="font-size:0.7rem;">(剩余需求计数, <=0表示过剩/满足)</span></h3>
+            <table class="dict-table" id="dictTable">
+                <thead><tr><th>字符</th><th>需求计数 (d[char])</th><th>状态</th></tr></thead>
+                <tbody id="dictBody"></tbody>
+            </table>
+            <hr>
+            <div><strong>🎯 当前最佳覆盖子串</strong></div>
+            <div id="currentAnswer" class="answer-area"> — </div>
+            <div style="margin-top: 12px;">
+                <details>
+                    <summary style="cursor:pointer; color:#2563eb;">📘 变量含义对照</summary>
+                    <ul style="font-size:0.8rem; margin-top:8px; padding-left:1.2rem;">
+                        <li><strong>d</strong> : 每个目标字符的剩余需求量 (负数表示超出需求)</li>
+                        <li><strong>formed</strong> : 已经完全满足需求的不同字符个数 (d[char]==0)</li>
+                        <li><strong>total</strong> : t 串中不同字符总数</li>
+                        <li><strong>l , r</strong> : 滑动窗口左右边界 (包含)</li>
+                        <li><strong>len_ans</strong> : 当前找到的最短窗口长度</li>
+                        <li><strong>subl, subr</strong> : 最佳窗口切片索引 (右开区间)</li>
+                    </ul>
+                </details>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // 默认测试用例 (可以修改，但为了演示清楚)
+    let sRaw = "ADOBECODEBANC";
+    let tRaw = "ABC";
+    // 如果需要更直观的演示，可改为以下示例：
+    // let sRaw = "aa";
+    // let tRaw = "aa";
+    // 但原始代码标准用例: s = "ADOBECODEBANC", t = "ABC" -> 输出 "BANC"
+    
+    // 算法状态复现 (模拟代码逻辑)
+    let stepsLog = [];      // 存储每一步快照 {l, r, formed, dictCopy, bestLen, subl, subr, windowValid}
+    let stepIndex = 0;
+    let finalAnswer = "";
+    
+    // 预先生成所有执行步骤
+    function simulateSteps(s, t) {
+        const d = new Map();
+        for (let ch of t) {
+            d.set(ch, (d.get(ch) || 0) + 1);
+        }
+        const total = d.size;
+        let formed = 0;
+        let l = 0, r = 0;
+        let len_ans = Infinity;
+        let subl = 0, subr = 0;
+        const steps = [];
+        
+        // 初始状态
+        steps.push({
+            l, r, formed, total,
+            dict: new Map(d),
+            len_ans,
+            subl, subr,
+            action: "init",
+            windowStr: ""
+        });
+        
+        while (r < s.length) {
+            const char = s[r];
+            if (d.has(char)) {
+                let newVal = d.get(char) - 1;
+                d.set(char, newVal);
+                if (newVal === 0) formed++;
+            }
+            // 记录扩张后的状态（在收缩之前）
+            steps.push({
+                l, r: r, formed, total,
+                dict: new Map(d),
+                len_ans,
+                subl, subr,
+                action: `扩张 r = ${r} , 字符 '${s[r]}'`,
+                windowStr: s.substring(l, r+1)
+            });
+            
+            // 内层while收缩窗口
+            while (l <= r && formed === total) {
+                const currLen = r - l + 1;
+                if (currLen < len_ans) {
+                    len_ans = currLen;
+                    subl = l;
+                    subr = r + 1;
+                }
+                // 记录收缩前的最优更新状态 (窗口有效)
+                steps.push({
+                    l, r, formed, total,
+                    dict: new Map(d),
+                    len_ans,
+                    subl, subr,
+                    action: `收缩前更新答案 len=${currLen} 窗口="${s.substring(l, r+1)}"`,
+                    windowStr: s.substring(l, r+1)
+                });
+                
+                const leftChar = s[l];
+                if (d.has(leftChar)) {
+                    if (d.get(leftChar) === 0) formed--;
+                    d.set(leftChar, d.get(leftChar) + 1);
+                }
+                l++;
+                // 收缩后状态 (l已移动)
+                if (l <= r+1) {
+                    steps.push({
+                        l, r, formed, total,
+                        dict: new Map(d),
+                        len_ans,
+                        subl, subr,
+                        action: `收缩左指针 l = ${l-1} → ${l}`,
+                        windowStr: l <= r ? s.substring(l, r+1) : "(空窗口)"
+                    });
+                } else {
+                    steps.push({
+                        l, r, formed, total,
+                        dict: new Map(d),
+                        len_ans,
+                        subl, subr,
+                        action: `收缩后 l > r`,
+                        windowStr: ""
+                    });
+                }
+            }
+            r++;
+            if (r <= s.length) {
+                // 记录右指针移动后的预备
+                steps.push({
+                    l, r: r, formed, total,
+                    dict: new Map(d),
+                    len_ans,
+                    subl, subr,
+                    action: `右指针前进 r = ${r-1} → ${r}`,
+                    windowStr: l < r ? s.substring(l, r) : ""
+                });
+            }
+        }
+        // 最终结果步骤
+        steps.push({
+            l, r: r, formed, total,
+            dict: new Map(d),
+            len_ans,
+            subl, subr,
+            action: "完成",
+            windowStr: len_ans === Infinity ? "" : s.substring(subl, subr),
+            final: true
+        });
+        return { steps, finalLen: len_ans, finalSubl: subl, finalSubr: subr, s, t };
+    }
+    
+    let simulationData = null;
+    let currentStep = null;
+    let autoInterval = null;
+    
+    function renderStep(stepIdx) {
+        if (!simulationData || !simulationData.steps.length) return;
+        if (stepIdx >= simulationData.steps.length) stepIdx = simulationData.steps.length - 1;
+        if (stepIdx < 0) stepIdx = 0;
+        stepIndex = stepIdx;
+        const step = simulationData.steps[stepIdx];
+        currentStep = step;
+        const { l, r, formed, total, dict, len_ans, subl, subr, action, windowStr } = step;
+        const s = simulationData.s;
+        const t = simulationData.t;
+        
+        document.getElementById("formedValue").innerText = `${formed}`;
+        document.getElementById("totalNeed").innerText = total;
+        document.getElementById("currWinLen").innerText = (r < s.length && l <= r) ? (r - l + 1) : 0;
+        document.getElementById("bestLen").innerText = (len_ans === Infinity ? "∞" : len_ans);
+        document.getElementById("sDisplay").innerText = s;
+        document.getElementById("tDisplay").innerText = t;
+        
+        // 渲染字符串格子
+        const container = document.getElementById("stringContainer");
+        container.innerHTML = "";
+        for (let i = 0; i < s.length; i++) {
+            const div = document.createElement("div");
+            div.className = "char-box";
+            if (l === i) div.classList.add("highlight-left");
+            if (r === i && r < s.length) div.classList.add("highlight-right");
+            if (l <= i && i <= r && r < s.length && l <= r) div.classList.add("window-range");
+            // 若当前步骤最佳窗口有特殊显示可以增加，但不覆盖
+            div.innerHTML = `<span class="char">${s[i]}</span><span class="idx">${i}</span>`;
+            container.appendChild(div);
+        }
+        
+        // 渲染字典表
+        const tSet = new Set(t.split(''));
+        const dictBody = document.getElementById("dictBody");
+        dictBody.innerHTML = "";
+        if (tSet.size === 0) {
+            dictBody.innerHTML = "<tr><td colspan='3'>目标串为空，直接返回空串</td></tr>";
+        } else {
+            const sortedChars = Array.from(tSet).sort();
+            for (let ch of sortedChars) {
+                const val = dict.has(ch) ? dict.get(ch) : 0;
+                let status = "";
+                if (val <= 0) status = "✅ 已满足";
+                else status = `❌ 还需 ${val}`;
+                const row = `<tr><td><strong>${ch}</strong></td><td>${val}</td><td style="font-size:0.75rem;">${status}</td></tr>`;
+                dictBody.insertAdjacentHTML('beforeend', row);
+            }
+        }
+        
+        // 显示当前最佳答案
+        const bestSub = (len_ans === Infinity ? "" : simulationData.s.substring(subl, subr));
+        document.getElementById("currentAnswer").innerHTML = bestSub ? `"${bestSub}"  (长度 ${len_ans})` : "尚未找到有效窗口";
+        if (step.action) {
+            // 辅助信息
+        }
+        // 额外显示动作提示悬浮
+        const infoDiv = document.querySelector(".info-text");
+        if (step.action && !step.action.includes("init")) {
+            // 可选更新信息区
+        }
+        // 控制按钮禁用范围
+        document.getElementById("prevBtn").disabled = (stepIndex === 0);
+        document.getElementById("nextBtn").disabled = (stepIndex === simulationData.steps.length - 1);
+    }
+    
+    function nextStep() {
+        if (autoInterval) clearInterval(autoInterval);
+        if (simulationData && stepIndex < simulationData.steps.length - 1) {
+            renderStep(stepIndex + 1);
+        }
+    }
+    
+    function prevStep() {
+        if (autoInterval) clearInterval(autoInterval);
+        if (simulationData && stepIndex > 0) {
+            renderStep(stepIndex - 1);
+        }
+    }
+    
+    function resetSimulation() {
+        if (autoInterval) clearInterval(autoInterval);
+        if (simulationData) {
+            renderStep(0);
+        }
+    }
+    
+    function autoPlay() {
+        if (autoInterval) clearInterval(autoInterval);
+        autoInterval = setInterval(() => {
+            if (simulationData && stepIndex < simulationData.steps.length - 1) {
+                renderStep(stepIndex + 1);
+            } else {
+                clearInterval(autoInterval);
+                autoInterval = null;
+            }
+        }, 500);
+    }
+    
+    function initSimulation(sVal, tVal) {
+        if (autoInterval) clearInterval(autoInterval);
+        simulationData = simulateSteps(sVal, tVal);
+        stepIndex = 0;
+        renderStep(0);
+    }
+    
+    // 监听重置并且可以重新输入，为方便提供默认修改 (简单添加控制)
+    // 附加可手工修改用例功能 (简单增加输入框)
+    const sInput = document.createElement("div");
+    sInput.style.marginTop = "12px";
+    sInput.style.display = "flex";
+    sInput.style.gap = "8px";
+    sInput.style.flexWrap = "wrap";
+    sInput.innerHTML = `
+        <input type="text" id="editS" placeholder="字符串 S" value="${sRaw}" style="padding:6px 12px; border-radius:30px; border:1px solid #cbd5e1; font-family:monospace;">
+        <input type="text" id="editT" placeholder="目标 T" value="${tRaw}" style="padding:6px 12px; border-radius:30px; border:1px solid #cbd5e1; font-family:monospace;">
+        <button id="applyBtn" style="background:#3b82f6; padding:6px 18px;">应用并重置</button>
+    `;
+    document.querySelector(".step-control").after(sInput);
+    
+    document.getElementById("applyBtn").addEventListener("click", () => {
+        const newS = document.getElementById("editS").value;
+        const newT = document.getElementById("editT").value;
+        if (newS !== undefined && newT !== undefined) {
+            sRaw = newS;
+            tRaw = newT;
+            initSimulation(sRaw, tRaw);
+        }
+    });
+    document.getElementById("nextBtn").addEventListener("click", nextStep);
+    document.getElementById("prevBtn").addEventListener("click", prevStep);
+    document.getElementById("resetBtn").addEventListener("click", resetSimulation);
+    document.getElementById("autoBtn").addEventListener("click", autoPlay);
+    
+    // 启动
+    initSimulation(sRaw, tRaw);
+</script>
+</body>
+</html>
